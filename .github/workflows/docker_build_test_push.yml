@@ -28,7 +28,7 @@ on:
       runs-on:
         description: Platform to execute on
         type: string
-        default: self-hosted-devops-x86
+        default: ubuntu-latest
       enable_latest_tag:
         description: Whether to push a latest tag for each image
         type: string

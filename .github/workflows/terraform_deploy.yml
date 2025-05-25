@@ -9,7 +9,7 @@ on:
       runs-on:
         description: Platform to execute on
         type: string
-        default: self-hosted-devops-x86
+        default: ubuntu-latest
       aws-account-id:
         description: Id of AWS account
         type: string

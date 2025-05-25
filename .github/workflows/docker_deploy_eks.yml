@@ -44,7 +44,7 @@ on:
       runs-on:
         description: Platform to execute on
         type: string
-        default: self-hosted-devops-x86
+        default: ubuntu-latest
 
 jobs:
   docker-deploy-eks:
