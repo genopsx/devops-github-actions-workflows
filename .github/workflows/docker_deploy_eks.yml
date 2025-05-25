@@ -60,7 +60,7 @@ jobs:
           sudo mv kubectl /usr/local/bin/
 
       - name: Configure AWS Credentials for EKS
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ inputs.eks_aws_region }}
           role-to-assume: ${{ env.EKS_ROLE_TO_ASSUME }}

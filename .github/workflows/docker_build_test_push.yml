@@ -58,7 +58,7 @@ jobs:
           failure-threshold: error
 
       - name: Configure AWS Credentials for ECR
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ inputs.ecr_aws_region }}
           role-to-assume: ${{ env.ECR_ROLE_TO_ASSUME }}
@@ -101,7 +101,7 @@ jobs:
     environment: devops
     steps:
       - name: Configure AWS Credentials for ECR
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ inputs.ecr_aws_region }}
           role-to-assume: ${{ env.ECR_ROLE_TO_ASSUME }}
