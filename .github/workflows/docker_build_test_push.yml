@@ -34,7 +34,7 @@ on:
         type: string
         default: "false"
     secrets:
-      GITHUB_TOKEN:
+      SEMANTIC_RELEASE_TOKEN:
         description: GitHub token for semantic-release
         required: true
 
