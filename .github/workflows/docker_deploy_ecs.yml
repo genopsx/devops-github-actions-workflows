@@ -1,0 +1,96 @@
+name: callable-docker-deploy-ecs
+
+env:
+  GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+  ECR_REGISTRY_URL: "${{ inputs.ecr_aws_account_id }}.dkr.ecr.${{ inputs.ecr_aws_region }}.amazonaws.com"
+  ECS_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.ecs_aws_account_id }}:role/DevOpsRunnerRole"
+
+on:
+  workflow_call:
+    inputs:
+      ecr_aws_account_id:
+        description: AWS Account ID to pull images from
+        type: string
+        # DevOps Prod
+        default: "152788273718"
+      ecr_aws_region:
+        description: AWS Region to pull images from
+        type: string
+        default: us-east-1
+      ecs_aws_account_id:
+        description: AWS Account ID to deploy to
+        type: string
+        required: true
+      ecs_aws_region:
+        description: AWS Region to deploy to
+        type: string
+        default: us-east-1
+      ecs_cluster:
+        description: ECS cluster to deploy to
+        type: string
+        required: true
+      ecs_service:
+        description: ECS service to deploy to
+        type: string
+        required: true
+      ecs_task_definition:
+        description: ECS Task Definition template to deploy
+        type: string
+        required: true
+      image_name:
+        description: Docker image to deploy
+        type: string
+        required: true
+      image_tag:
+        description: Docker image tag to deploy
+        type: string
+        required: true
+      codedeploy_application:
+        description: CodeDeploy application
+        type: string
+        required: false
+      codedeploy_appspec:
+        description: CodeDeploy appspec file
+        type: string
+        required: false
+      codedeploy_deployment_group:
+        description: CodeDeploy deployment group
+        type: string
+        required: false
+      runs-on:
+        description: Platform to execute on
+        type: string
+        default: self-hosted-devops-x86
+
+jobs:
+  docker-deploy-ecs:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Configure AWS Credentials for ECS
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ inputs.ecs_aws_region }}
+          role-to-assume: ${{ env.ECS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3599
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ inputs.ecs_task_definition }}
+          container-name: ${{ inputs.image_name }}
+          image: "${{ env.ECR_REGISTRY_URL }}/${{ inputs.image_name }}:${{ inputs.image_tag }}"
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          cluster: ${{ inputs.ecs_cluster }}
+          service: ${{ inputs.ecs_service }}
+          codedeploy-appspec: ${{ inputs.codedeploy_appspec }}
+          codedeploy-application: ${{ inputs.codedeploy_application }}
+          codedeploy-deployment-group: ${{ inputs.codedeploy_deployment_group }}
+          wait-for-service-stability: true

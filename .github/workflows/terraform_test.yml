@@ -1,0 +1,96 @@
+
+
+env:
+  GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+#permissions:
+  #contents: write
+  #pull-requests: write
+
+on:
+  workflow_call:
+     inputs:
+       runs-on:
+         description: Platform to execute on
+         type: string
+         default: self-hosted-devops-x86
+       terraform-version:
+         description: Version of Terraform to use
+         type: string
+         default: 1.7.5
+       checkov-skip-check-list:
+         description: Checkov checks to skip.  Comma separated, no spaces.
+         type: string
+         default: CKV_AWS_21,CKV_AWS_52,CKV_AWS_53,CKV_AWS_54,CKV2_AWS_12,CKV_TF_1,CKV_TF_2,CKV2_AWS_11
+
+jobs:
+  terraform_initialize:
+    name: Initialize
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Setup private modules permissions
+        id: private-modules
+        uses: philips-labs/terraform-private-modules-action@v1
+        with:
+          org: ${{ github.repository_owner }}
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+
+  terraform_self_test:
+    name: Format tests
+    runs-on: ${{ inputs.runs-on }}
+    needs: [ terraform_initialize ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+
+      - name: Terraform Fmt
+        run: terraform fmt -diff=true -check=true .
+
+  terraform_lint:
+    name: "TFLint"
+    runs-on: ${{ inputs.runs-on }}
+    needs: [ terraform_initialize ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tflint_version: latest
+
+      - name: Terraform lint
+        run: |
+          tflint -f compact \
+             --disable-rule=terraform_required_providers \
+             --disable-rule=terraform_required_version
+
+  terraform_checkov:
+    name: Checkov
+    runs-on: ${{ inputs.runs-on }}
+    needs: [ terraform_initialize ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov action
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          quiet: false
+          soft_fail: false
+          framework: terraform
+          download_external_modules: false
+          log_level: WARNING
+          skip_check: ${{ inputs.checkov-skip-check-list }}

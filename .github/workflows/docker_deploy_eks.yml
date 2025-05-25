@@ -1,0 +1,77 @@
+name: callable-docker-deploy-eks
+
+env:
+  GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+  ECR_REGISTRY_URL: "${{ inputs.ecr_aws_account_id }}.dkr.ecr.${{ inputs.ecr_aws_region }}.amazonaws.com"
+  EKS_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.eks_aws_account_id }}:role/DevOpsRunnerRole"
+
+on:
+  workflow_call:
+    inputs:
+      ecr_aws_account_id:
+        description: AWS Account ID to pull images from
+        type: string
+        # DevOps Prod
+        default: "152788273718"
+      ecr_aws_region:
+        description: AWS Region to pull images from
+        type: string
+        default: us-east-1
+      eks_aws_account_id:
+        description: AWS Account ID to deploy to
+        type: string
+        required: true
+      eks_aws_region:
+        description: AWS Region to deploy to
+        type: string
+        default: us-east-1
+      eks_cluster:
+        description: EKS cluster to deploy to
+        type: string
+        required: true
+      eks_deployment_manifest:
+        description: EKS Task Definition template to deploy
+        type: string
+        required: true
+      image_name:
+        description: Docker image to deploy
+        type: string
+        required: true
+      image_tag:
+        description: Docker image tag to deploy
+        type: string
+        required: true
+      runs-on:
+        description: Platform to execute on
+        type: string
+        default: self-hosted-devops-x86
+
+jobs:
+  docker-deploy-eks:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Configure AWS Credentials for EKS
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ inputs.eks_aws_region }}
+          role-to-assume: ${{ env.EKS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3599
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig --name ${{ inputs.eks_cluster }} --region ${{ inputs.eks_aws_region }}
+
+      - name: Deploy to EKS
+        run: |
+          aws eks update-kubeconfig --name ${{ inputs.eks_cluster }} --region ${{ inputs.eks_aws_region }}
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.ECR_REGISTRY_URL }}/${{ inputs.image_name }}:${{ inputs.image_tag }}|g" ${{ inputs.eks_deployment_manifest }}
+          kubectl apply -f ${{ inputs.eks_deployment_manifest }} 

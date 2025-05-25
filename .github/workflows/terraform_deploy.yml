@@ -1,0 +1,92 @@
+name: Terraform CI
+
+env:
+  GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: Platform to execute on
+        type: string
+        default: self-hosted-devops-x86
+      aws-account-id:
+        description: Id of AWS account
+        type: string
+      environment-name:
+        description: Name of environment to deploy to
+        type: string
+      terraform-version:
+        description: Version of Terraform to use
+        type: string
+        default: 1.6.4
+      checkov-skip-check-list:
+        description: Checkov checks to skip.  Comma separated, no spaces.
+        type: string
+        default: CKV_AWS_21,CKV_AWS_52,CKV_AWS_53,CKV_AWS_54,CKV2_AWS_12,CKV_TF_1,CKV2_AWS_11
+      aws_role_name:
+        description: AWS IAM role to use for deployment
+        type: string
+        default: DevOpsDeployRole
+         
+
+jobs:
+  terraform_initialize:
+    name: Initialize
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Setup private modules permissions
+        id: private-modules
+        uses: philips-labs/terraform-private-modules-action@v1
+        with:
+          org: ${{ github.repository_owner }}
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+
+  terraform_deploy:
+    name: "Terraform deploy to ${{ inputs.environment-name }}"
+    id: deploy
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup private modules permissions
+        id: private-modules
+        uses: philips-labs/terraform-private-modules-action@v1
+        with:
+          org: ${{ github.repository_owner }}
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+
+      - name: Terraform Cloud Login
+        run: terraform login
+        with:
+          cli_config_credentials_token: ${{ secrets.TERRAFORM_CLOUD_API_TOKEN }}
+
+      - name: Terraform workspace select
+        run: terraform workspace select -or-create=true ${{ inputs.aws-account }}-${{ inputs.environment-name }}-graham-test
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan --var-file=envs/${{ inputs.environment-name }}/terraform.tfvars -out=tfplan.txt
+
+      - name: Upload Plan as Artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: terraform-plan
+          path: tfplan.txt
+
+      - name: Terraform logout
+        when: always
+        run: terraform logout

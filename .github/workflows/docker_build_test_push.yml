@@ -1,0 +1,150 @@
+name: callable-docker-build-test-push
+
+env:
+  GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+  DOCKER_PROJECT_NAME: gha
+  ECR_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.ecr_aws_account_id }}:role/DevOpsRunnerRole"
+
+on:
+  workflow_call:
+    inputs:
+      docker_compose_file:
+        description: Path to docker-compose file
+        type: string
+        required: true
+      ecr_aws_account_id:
+        description: AWS Account ID to push images to
+        type: string
+        # DevOps Prod
+        default: "152788273718"
+      ecr_aws_region:
+        description: AWS Region to push images to
+        type: string
+        default: us-east-1
+      images:
+        description: JSON array of images, with paths to Dockerfiles and, image urls, and test commands
+        type: string
+        required: true
+      runs-on:
+        description: Platform to execute on
+        type: string
+        default: self-hosted-devops-x86
+      enable_latest_tag:
+        description: Whether to push a latest tag for each image
+        type: string
+        default: "false"
+
+jobs:
+  docker-build-test-push:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup docker-compose
+        uses: KengoTODA/actions-setup-docker-compose@v1
+        with:
+          version: '2.14.2'
+
+      - name: Lint Dockerfiles
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+          failure-threshold: error
+
+      - name: Configure AWS Credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ inputs.ecr_aws_region }}
+          role-to-assume: ${{ env.ECR_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3599
+          role-skip-session-tagging: true
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build docker images
+        run: docker-compose -f ${{ inputs.docker_compose_file }} -p ${{ env.DOCKER_PROJECT_NAME }} build --pull --parallel --compress
+
+      - name: Run tests
+        run: |
+          echo ${{ env.IMAGES }} | jq -c '.[]' | while read -r app; do
+            image_name=$(echo "$app" | jq -r '.name')
+            # Run tests for each image
+            echo "Running tests for ${image_name}"
+            docker-compose -f ${{ inputs.docker_compose_file }} -p ${{ env.DOCKER_PROJECT_NAME }} run ${image_name}
+          done
+
+      - name: Tag images with commit hash and push to ECR
+        env:
+          IMAGES: ${{ toJSON(inputs.images) }}
+          ECR_REGISTRY_URI: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Loop through images in config
+          echo ${{ env.IMAGES }} | jq -c '.[]' | while read -r app; do
+            image_name=$(echo "$app" | jq -r '.name')
+            # Tag the image using commit hash and push
+            docker tag ${{ env.DOCKER_PROJECT_NAME }}-${image_name} ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ github.sha }}
+            docker push ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ github.sha }}
+          done
+
+  docker-push-latest:
+    needs: docker-build-test-push
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Configure AWS Credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ inputs.ecr_aws_region }}
+          role-to-assume: ${{ env.ECR_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3599
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Semantic release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag images with 'latest' and push to ECR
+        if: ${{ inputs.enable_latest_tag == 'true' }}
+        env:
+          IMAGES: ${{ toJSON(inputs.images) }}
+          ECR_REGISTRY_URI: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Loop through images in config
+          echo ${{ env.IMAGES }} | jq -c '.[]' | while read -r app; do
+            image_name=$(echo "$app" | jq -r '.name')
+            # Tag image as latest and push
+            docker tag ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ github.sha }} ${{ env.ECR_REGISTRY_URI }}/${image_name}:latest
+            docker push ${{ env.ECR_REGISTRY_URI }}/${image_name}:latest
+          done
+
+      - name: Tag images with semantic release version and push to ECR
+        if: ${{ steps.semantic.outputs.new_release_published == 'true' }}
+        env:
+          IMAGES: ${{ toJSON(inputs.images) }}
+          ECR_REGISTRY_URI: ${{ steps.login-ecr.outputs.registry }}
+          NEW_RELEASE_VERSION: ${{ steps.semantic.outputs.new_release_version }}
+        run: |
+          # Loop through images in config
+          echo ${{ env.IMAGES }} | jq -c '.[]' | while read -r app; do
+            image_name=$(echo "$app" | jq -r '.name')
+            # Tag image using semantic release version and push
+            docker tag ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ github.sha }} ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ env.NEW_RELEASE_VERSION }}
+            docker push ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ env.NEW_RELEASE_VERSION }}
+          done
