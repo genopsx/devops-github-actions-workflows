@@ -34,10 +34,10 @@ on:
         type: string
         default: "false"
     secrets:
-      GH_TOKEN:
+      GITHUB_TOKEN:
         description: GitHub token for semantic-release
         required: true
-        
+
 permissions:
   id-token: write
   contents: write
