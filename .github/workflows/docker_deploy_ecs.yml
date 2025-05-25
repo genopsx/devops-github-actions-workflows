@@ -3,7 +3,7 @@ name: callable-docker-deploy-ecs
 env:
   GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
   ECR_REGISTRY_URL: "${{ inputs.ecr_aws_account_id }}.dkr.ecr.${{ inputs.ecr_aws_region }}.amazonaws.com"
-  ECS_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.ecs_aws_account_id }}:role/DevOpsRunnerRole"
+  ECS_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.ecs_aws_account_id }}:role/deployment-terragrunt-genopsx-eu-west-1-955769636964"
 
 on:
   workflow_call:
@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Configure AWS Credentials for ECS
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ inputs.ecs_aws_region }}
           role-to-assume: ${{ env.ECS_ROLE_TO_ASSUME }}
