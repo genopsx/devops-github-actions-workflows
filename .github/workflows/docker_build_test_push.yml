@@ -126,7 +126,7 @@ jobs:
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
         env:
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
 
       - name: Tag images with 'latest' and push to ECR
         if: ${{ inputs.enable_latest_tag == 'true' }}
