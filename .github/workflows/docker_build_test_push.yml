@@ -33,7 +33,11 @@ on:
         description: Whether to push a latest tag for each image
         type: string
         default: "false"
-
+    secrets:
+      GH_TOKEN:
+        description: GitHub token for semantic-release
+        required: true
+        
 permissions:
   id-token: write
   contents: write
@@ -126,7 +130,7 @@ jobs:
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
         env:
-          GH_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
 
       - name: Tag images with 'latest' and push to ECR
         if: ${{ inputs.enable_latest_tag == 'true' }}
