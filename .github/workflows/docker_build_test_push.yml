@@ -98,6 +98,7 @@ jobs:
     needs: docker-build-test-push
     if: github.ref_name == github.event.repository.default_branch
     runs-on: ${{ inputs.runs-on }}
+    environment: devops
     steps:
       - name: Configure AWS Credentials for ECR
         uses: aws-actions/configure-aws-credentials@v1
@@ -118,7 +119,7 @@ jobs:
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
 
       - name: Tag images with 'latest' and push to ECR
         if: ${{ inputs.enable_latest_tag == 'true' }}
