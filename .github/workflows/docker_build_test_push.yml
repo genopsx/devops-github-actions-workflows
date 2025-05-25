@@ -20,7 +20,7 @@ on:
       ecr_aws_region:
         description: AWS Region to push images to
         type: string
-        default: us-east-1
+        default: eu-west-1
       images:
         description: JSON array of images, with paths to Dockerfiles and, image urls, and test commands
         type: string
