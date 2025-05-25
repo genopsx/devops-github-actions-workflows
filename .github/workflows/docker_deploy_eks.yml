@@ -3,7 +3,7 @@ name: callable-docker-deploy-eks
 env:
   GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
   ECR_REGISTRY_URL: "${{ inputs.ecr_aws_account_id }}.dkr.ecr.${{ inputs.ecr_aws_region }}.amazonaws.com"
-  EKS_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.eks_aws_account_id }}:role/DevOpsRunnerRole"
+  EKS_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.eks_aws_account_id }}:role/deployment-terragrunt-genopsx-eu-west-1-955769636964"
 
 on:
   workflow_call:

@@ -3,7 +3,7 @@ name: callable-docker-build-test-push
 env:
   GIT_SSH_COMMAND: "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
   DOCKER_PROJECT_NAME: gha
-  ECR_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.ecr_aws_account_id }}:role/DevOpsRunnerRole"
+  ECR_ROLE_TO_ASSUME: "arn:aws:iam::${{ inputs.ecr_aws_account_id }}:role/deployment-terragrunt-genopsx-eu-west-1-955769636964"
 
 on:
   workflow_call:
