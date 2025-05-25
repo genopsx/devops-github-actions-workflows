@@ -12,7 +12,7 @@ on:
         description: AWS Account ID to pull images from
         type: string
         # DevOps Prod
-        default: "152788273718"
+        default: "955769636964"
       ecr_aws_region:
         description: AWS Region to pull images from
         type: string
