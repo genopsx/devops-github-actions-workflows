@@ -34,6 +34,11 @@ on:
         type: string
         default: "false"
 
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
 jobs:
   docker-build-test-push:
     runs-on: ${{ inputs.runs-on }}

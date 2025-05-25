@@ -62,6 +62,11 @@ on:
         type: string
         default: ubuntu-latest
 
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
 jobs:
   docker-deploy-ecs:
     runs-on: ${{ inputs.runs-on }}
