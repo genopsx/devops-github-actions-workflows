@@ -27,6 +27,7 @@ jobs:
   terraform_initialize:
     name: Initialize
     runs-on: ${{ inputs.runs-on }}
+    environment: devops
     steps:
       - name: Setup private modules permissions
         id: private-modules
