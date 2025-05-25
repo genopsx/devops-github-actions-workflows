@@ -11,6 +11,7 @@ on:
 jobs:
   release-please:
     name: Semantic release
+    environment: devops
     runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Checkout
@@ -23,4 +24,4 @@ jobs:
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v4
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
