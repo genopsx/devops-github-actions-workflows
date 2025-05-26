@@ -156,6 +156,10 @@ jobs:
           # Loop through images in config
           echo ${{ env.IMAGES }} | jq -c '.[]' | while read -r app; do
             image_name=$(echo "$app" | jq -r '.name')
+
+            # Pull the existing image first
+            docker pull $ECR_REGISTRY_URI/${image_name}:${GITHUB_SHA}
+
             # Tag image using semantic release version and push
             docker tag ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ github.sha }} ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ env.NEW_RELEASE_VERSION }}
             docker push ${{ env.ECR_REGISTRY_URI }}/${image_name}:${{ env.NEW_RELEASE_VERSION }}
