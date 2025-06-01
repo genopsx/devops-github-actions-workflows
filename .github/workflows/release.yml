@@ -7,6 +7,10 @@ on:
         description: Platform to execute on
         type: string
         default: ubuntu-latest
+      environment:
+        description: Environment name
+        required: false
+        type: string
     secrets:
       SEMANTIC_RELEASE_TOKEN:
         required: true
