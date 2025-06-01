@@ -7,13 +7,16 @@ on:
         description: Platform to execute on
         type: string
         default: ubuntu-latest
-      SEMANTIC_RELEASE_TOKEN: # The PAT
+    secrets:
+      SEMANTIC_RELEASE_TOKEN:
         required: true
-        type: string
 permissions:
   id-token: write
   contents: write
   pull-requests: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
 
 jobs:
   release-please:
